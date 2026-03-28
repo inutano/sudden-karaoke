@@ -1,0 +1,20 @@
+{
+  "name": "sudden-karaoke",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx vite --port 5174 --host",
+    "build": "npx vite build",
+    "simulator": "npx evenhub-simulator http://localhost:5174",
+    "qr": "npx evenhub qr --port 5174 --http"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.7",
+    "@evenrealities/evenhub-cli": "^0.1.5",
+    "@evenrealities/evenhub-simulator": "^0.4.1"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}
