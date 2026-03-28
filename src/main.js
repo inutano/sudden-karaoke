@@ -363,6 +363,7 @@ function showResultScreen() {
     const initialLyrics = getDisplayLines(-1);
     bridge.rebuildPageContainer(screenResult(songinfo, initialLyrics));
     startLyricsSync();
+    if (continuous) scheduleResync();
   } else if (plainLines.length > 0) {
     plainOffset = 0;
     const initialLyrics = plainLines.slice(0, 6).join('\n');
@@ -420,6 +421,54 @@ function stopLyricsTimer() {
   lyricsTimer = null;
   if (resyncTimer) clearTimeout(resyncTimer);
   resyncTimer = null;
+}
+
+// ── Always On re-sync ────────────────────────────────────────────────────────
+
+function scheduleResync() {
+  if (!continuous || currentScreen !== 'result') return;
+  resyncTimer = setTimeout(async () => {
+    if (currentScreen !== 'result') return;
+    console.log('Re-sync: capturing audio for drift correction');
+
+    audioChunks = [];
+    isCapturing = true;
+    const micOk = await bridge.audioControl(true);
+    if (!micOk) { isCapturing = false; scheduleResync(); return; }
+
+    setTimeout(async () => {
+      isCapturing = false;
+      await bridge.audioControl(false);
+      if (currentScreen !== 'result') return;
+
+      const pcm = collectPcm();
+      if (pcm.length < 32000) { scheduleResync(); return; }
+
+      try {
+        const song = await recognizeSong(pcm);
+        if (currentScreen !== 'result') return;
+        if (song) {
+          if (song.title === currentSong.title && song.artist === currentSong.artist) {
+            matchTime = Date.now();
+            timecodeSeconds = parseTimecode(song.timecode);
+            console.log('Re-synced to', song.timecode);
+          } else {
+            console.log('New song detected:', song.title);
+            currentSong = song;
+            matchTime = Date.now();
+            timecodeSeconds = parseTimecode(song.timecode);
+            bridge.setLocalStorage('last_song', `${song.artist} - ${song.title}`);
+            await fetchAndShowLyrics();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Re-sync failed:', err.message);
+      }
+
+      scheduleResync();
+    }, 5000);
+  }, 30000);
 }
 
 function updatePlainLyricsDisplay() {
