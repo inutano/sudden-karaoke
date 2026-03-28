@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudden Karaoke</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --neon-magenta: #ff00cc;
+      --neon-cyan:    #00ffff;
+      --neon-yellow:  #ffff00;
+      --bg-dark:      #0a0010;
+      --bg-card:      rgba(10, 0, 30, 0.85);
+      --border-glow:  rgba(255, 0, 204, 0.6);
+      --text-body:    #e0d0ff;
+      --text-dim:     #9980cc;
+    }
+
+    /* ── Starfield ── */
+    body {
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--text-body);
+      background-color: var(--bg-dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .starfield {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .starfield span {
+      position: absolute;
+      display: block;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite;
+      opacity: 0;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: scale(0.8); }
+      50%       { opacity: var(--op, 0.8); transform: scale(1.2); }
+    }
+
+    /* ── CRT Scanlines ── */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0, 0, 0, 0.18) 3px,
+        rgba(0, 0, 0, 0.18) 4px
+      );
+    }
+
+    /* ── Layout ── */
+    #app {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      max-width: 480px;
+      gap: 24px;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg-card);
+      border: 2px solid var(--border-glow);
+      border-radius: 4px;
+      padding: 28px 24px;
+      width: 100%;
+      box-shadow:
+        0 0 16px rgba(255, 0, 204, 0.35),
+        0 0 40px rgba(0, 255, 255, 0.12),
+        inset 0 0 20px rgba(255, 0, 204, 0.05);
+    }
+
+    /* ── Neon Heading ── */
+    h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(18px, 6vw, 32px);
+      line-height: 1.5;
+      background: linear-gradient(90deg, var(--neon-magenta), var(--neon-cyan), var(--neon-magenta));
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+      text-shadow: none;
+      filter: drop-shadow(0 0 8px rgba(255, 0, 204, 0.7));
+    }
+
+    h2 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(12px, 4vw, 18px);
+      line-height: 1.6;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px rgba(0, 255, 255, 0.4);
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    /* ── Tagline ── */
+    .tagline {
+      font-size: 26px;
+      color: var(--neon-yellow);
+      text-shadow: 0 0 8px rgba(255, 255, 0, 0.7);
+      letter-spacing: 1px;
+    }
+
+    /* ── Decorative divider ── */
+    .divider {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-magenta), var(--neon-cyan), transparent);
+      border: none;
+      box-shadow: 0 0 8px rgba(255, 0, 204, 0.5);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+      border-radius: 3px;
+      padding: 14px 28px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--neon-magenta), #8800ff);
+      color: #fff;
+      box-shadow: 0 0 14px rgba(255, 0, 204, 0.7), 0 4px 0 rgba(0,0,0,0.4);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 24px rgba(255, 0, 204, 0.9), 0 4px 0 rgba(0,0,0,0.4);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--neon-cyan);
+      border: 2px solid var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(0, 255, 255, 0.1);
+      box-shadow: 0 0 18px rgba(0, 255, 255, 0.6);
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #00cc88, #0088ff);
+      color: #fff;
+      box-shadow: 0 0 14px rgba(0, 204, 136, 0.6), 0 4px 0 rgba(0,0,0,0.4);
+      width: 100%;
+    }
+
+    .btn-save:hover {
+      box-shadow: 0 0 24px rgba(0, 204, 136, 0.8), 0 4px 0 rgba(0,0,0,0.4);
+    }
+
+    /* ── Steps ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: left;
+      width: 100%;
+    }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      font-size: 22px;
+      line-height: 1.4;
+      color: var(--text-body);
+    }
+
+    .step-num {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: var(--neon-magenta);
+      background: rgba(255, 0, 204, 0.12);
+      border: 1px solid rgba(255, 0, 204, 0.5);
+      border-radius: 2px;
+      padding: 4px 7px;
+      flex-shrink: 0;
+      margin-top: 3px;
+      text-shadow: 0 0 6px var(--neon-magenta);
+    }
+
+    /* ── Input ── */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .input-label {
+      font-size: 18px;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
+    }
+
+    #api-key-input {
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid rgba(255, 0, 204, 0.5);
+      border-radius: 3px;
+      color: var(--text-body);
+      outline: none;
+      letter-spacing: 1px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    #api-key-input:focus {
+      border-color: var(--neon-magenta);
+      box-shadow: 0 0 12px rgba(255, 0, 204, 0.5);
+    }
+
+    #api-key-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* ── Error message ── */
+    #error-msg {
+      font-size: 20px;
+      color: #ff4466;
+      text-shadow: 0 0 6px rgba(255, 68, 102, 0.6);
+      min-height: 24px;
+      display: none;
+    }
+
+    #error-msg.visible {
+      display: block;
+    }
+
+    /* ── Ready screen ── */
+    .mic-emoji {
+      font-size: 72px;
+      line-height: 1;
+      filter: drop-shadow(0 0 16px rgba(255, 0, 204, 0.8));
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(255, 0, 204, 0.8)); }
+      50%       { transform: scale(1.08); filter: drop-shadow(0 0 28px rgba(0, 255, 255, 0.9)); }
+    }
+
+    .ready-msg {
+      font-size: 24px;
+      color: var(--text-body);
+      line-height: 1.6;
+    }
+
+    .change-key-link {
+      font-size: 18px;
+      color: var(--text-dim);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'VT323', monospace;
+      text-decoration: underline;
+      text-decoration-style: dashed;
+      text-underline-offset: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .change-key-link:hover {
+      color: var(--neon-cyan);
+    }
+
+    /* ── Neon border animation on card ── */
+    @keyframes borderPulse {
+      0%, 100% { border-color: rgba(255, 0, 204, 0.6); }
+      50%       { border-color: rgba(0, 255, 255, 0.6); }
+    }
+
+    .card {
+      animation: borderPulse 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Starfield -->
+  <div class="starfield" id="starfield"></div>
+
+  <!-- CRT Scanlines -->
+  <div class="scanlines"></div>
+
+  <!-- App -->
+  <div id="app">
+
+    <!-- ── Screen 1: Welcome ── -->
+    <div class="screen active" id="screen-welcome">
+      <h1>Sudden Karaoke</h1>
+      <p class="tagline">Hear a song? Sing along!</p>
+      <hr class="divider" />
+      <button class="btn btn-primary" id="btn-get-started">Get Started</button>
+    </div>
+
+    <!-- ── Screen 2: API Key Setup ── -->
+    <div class="screen" id="screen-setup">
+      <h2>API Key Setup</h2>
+      <div class="card">
+        <div class="steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span>Visit audd.io and create a free account</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span>Go to your Dashboard to find your API token</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span>Paste your API token below</span>
+          </div>
+        </div>
+
+        <br />
+        <a class="btn btn-secondary" href="https://audd.io" target="_blank" rel="noopener noreferrer">Open audd.io</a>
+        <br /><br />
+
+        <div class="input-group">
+          <label class="input-label" for="api-key-input">Your API Token</label>
+          <input
+            type="text"
+            id="api-key-input"
+            placeholder="paste token here..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <br />
+        <div id="error-msg">Please enter your API token.</div>
+        <br />
+
+        <button class="btn btn-save" id="btn-save">Save</button>
+      </div>
+    </div>
+
+    <!-- ── Screen 3: Ready ── -->
+    <div class="screen" id="screen-ready">
+      <h2>Ready!</h2>
+      <div class="mic-emoji">🎤</div>
+      <p class="ready-msg">Launch Sudden Karaoke from your glasses.</p>
+      <button class="change-key-link" id="btn-change-key">Change API Key</button>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk';
+
+    // ── Starfield generation ──────────────────────────────────────────────────
+    (function buildStarfield() {
+      const container = document.getElementById('starfield');
+      const COUNT = 120;
+      for (let i = 0; i < COUNT; i++) {
+        const star = document.createElement('span');
+        const size = Math.random() * 2.5 + 0.5;
+        star.style.cssText = [
+          `width:${size}px`,
+          `height:${size}px`,
+          `top:${Math.random() * 100}%`,
+          `left:${Math.random() * 100}%`,
+          `--dur:${(Math.random() * 4 + 1.5).toFixed(2)}s`,
+          `--op:${(Math.random() * 0.5 + 0.3).toFixed(2)}`,
+          `animation-delay:${(Math.random() * 5).toFixed(2)}s`,
+        ].join(';');
+        container.appendChild(star);
+      }
+    })();
+
+    // ── Screen helpers ────────────────────────────────────────────────────────
+    const screens = {
+      welcome: document.getElementById('screen-welcome'),
+      setup:   document.getElementById('screen-setup'),
+      ready:   document.getElementById('screen-ready'),
+    };
+
+    function showScreen(name) {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      screens[name].classList.add('active');
+    }
+
+    // ── UI references ─────────────────────────────────────────────────────────
+    const btnGetStarted = document.getElementById('btn-get-started');
+    const btnSave       = document.getElementById('btn-save');
+    const btnChangeKey  = document.getElementById('btn-change-key');
+    const apiKeyInput   = document.getElementById('api-key-input');
+    const errorMsg      = document.getElementById('error-msg');
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.add('visible');
+    }
+
+    function hideError() {
+      errorMsg.classList.remove('visible');
+    }
+
+    // ── Navigation ────────────────────────────────────────────────────────────
+    btnGetStarted.addEventListener('click', () => showScreen('setup'));
+
+    btnChangeKey.addEventListener('click', () => {
+      apiKeyInput.value = '';
+      hideError();
+      showScreen('setup');
+    });
+
+    // ── Bridge init ───────────────────────────────────────────────────────────
+    let bridge = null;
+
+    async function init() {
+      try {
+        bridge = await waitForEvenAppBridge();
+
+        // If a key is already stored, skip straight to Ready
+        const storedKey = await bridge.getLocalStorage('audd_api_key');
+        if (storedKey) {
+          showScreen('ready');
+        }
+        // Otherwise stay on Welcome (already active)
+      } catch (err) {
+        // Bridge unavailable (e.g. browser preview) — stay on Welcome
+        console.warn('EvenAppBridge not available:', err);
+      }
+    }
+
+    // ── Save handler ──────────────────────────────────────────────────────────
+    btnSave.addEventListener('click', async () => {
+      const key = apiKeyInput.value.trim();
+
+      if (!key) {
+        showError('Please enter your API token.');
+        return;
+      }
+
+      hideError();
+
+      try {
+        if (bridge) {
+          await bridge.setLocalStorage('audd_api_key', key);
+        }
+        showScreen('ready');
+      } catch (err) {
+        showError('Failed to save. Please try again.');
+        console.error('setLocalStorage error:', err);
+      }
+    });
+
+    // ── Clear error on input ──────────────────────────────────────────────────
+    apiKeyInput.addEventListener('input', hideError);
+
+    // ── Kick off ──────────────────────────────────────────────────────────────
+    init();
+  </script>
+
+</body>
+</html>
