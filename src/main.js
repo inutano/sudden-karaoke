@@ -28,83 +28,102 @@ let currentLineIndex = -1;
 function screenModeSelect() {
   return {
     containerTotalNum: 2,
-    textObject: {
-      x: 20, y: 40, width: 536, height: 60,
-      text: 'Sudden Karaoke',
-      isEventCapture: 0,
-    },
-    listObject: {
-      x: 20, y: 120, width: 536, height: 148,
-      items: ['One Shot', 'Always On'],
+    listObject: [{
+      xPosition: 20, yPosition: 120, width: 536, height: 148,
+      containerID: 2, containerName: 'modes',
+      itemContainer: { itemCount: 2, itemName: ['One Shot', 'Always On'] },
       isEventCapture: 1,
-    },
+    }],
+    textObject: [{
+      xPosition: 20, yPosition: 40, width: 536, height: 60,
+      containerID: 1, containerName: 'title',
+      content: 'Sudden Karaoke',
+      isEventCapture: 0,
+    }],
+    imageObject: [],
   };
 }
 
 function screenNoApiKey() {
   return {
     containerTotalNum: 1,
-    textObject: {
-      x: 20, y: 60, width: 536, height: 160,
-      text: 'No API key set.\nOpen Sudden Karaoke in\nthe phone app to set up.',
+    listObject: [],
+    textObject: [{
+      xPosition: 20, yPosition: 60, width: 536, height: 160,
+      containerID: 1, containerName: 'message',
+      content: 'No API key set.\nOpen Sudden Karaoke in\nthe phone app to set up.',
       isEventCapture: 1,
-    },
+    }],
+    imageObject: [],
   };
 }
 
 function screenListening(retry) {
   return {
     containerTotalNum: 1,
-    textObject: {
-      x: 20, y: 80, width: 536, height: 120,
-      text: retry ? 'Still listening...' : 'Listening...',
+    listObject: [],
+    textObject: [{
+      xPosition: 20, yPosition: 80, width: 536, height: 120,
+      containerID: 1, containerName: 'status',
+      content: retry ? 'Still listening...' : 'Listening...',
       isEventCapture: 1,
-    },
+    }],
+    imageObject: [],
   };
 }
 
 function screenError(message) {
   return {
     containerTotalNum: 1,
-    textObject: {
-      x: 20, y: 60, width: 536, height: 160,
-      text: message,
+    listObject: [],
+    textObject: [{
+      xPosition: 20, yPosition: 60, width: 536, height: 160,
+      containerID: 1, containerName: 'message',
+      content: message,
       isEventCapture: 1,
-    },
+    }],
+    imageObject: [],
   };
 }
 
 function screenResult(songinfo, lyricsText) {
   return {
     containerTotalNum: 2,
+    listObject: [],
     textObject: [
       {
-        x: 20, y: 10, width: 536, height: 50,
-        text: songinfo,
+        xPosition: 20, yPosition: 10, width: 536, height: 50,
+        containerID: 1, containerName: 'songinfo',
+        content: songinfo.slice(0, 200),
         isEventCapture: 0,
       },
       {
-        x: 20, y: 70, width: 536, height: 200,
-        text: lyricsText,
+        xPosition: 20, yPosition: 70, width: 536, height: 200,
+        containerID: 2, containerName: 'lyrics',
+        content: lyricsText.slice(0, 2000),
         isEventCapture: 1,
       },
     ],
+    imageObject: [],
   };
 }
 
 function screenQuitConfirm() {
   return {
     containerTotalNum: 2,
-    textObject: {
-      x: 20, y: 40, width: 536, height: 60,
-      text: 'Quit?',
-      isEventCapture: 0,
-    },
-    listObject: {
-      x: 20, y: 120, width: 536, height: 148,
-      items: ['No', 'Yes'],
+    listObject: [{
+      xPosition: 20, yPosition: 120, width: 536, height: 148,
+      containerID: 2, containerName: 'choices',
+      itemContainer: { itemCount: 2, itemName: ['No', 'Yes'] },
       isEventCapture: 1,
-    },
+    }],
+    textObject: [{
+      xPosition: 20, yPosition: 40, width: 536, height: 60,
+      containerID: 1, containerName: 'prompt',
+      content: 'Quit?',
+      isEventCapture: 0,
+    }],
+    imageObject: [],
   };
 }
 
@@ -215,7 +234,7 @@ function handleListEvent(event) {
     return;
   }
 
-  const name = listEvent.name;
+  const name = listEvent.currentSelectItemName;
 
   switch (currentScreen) {
     case 'mode_select':
@@ -237,9 +256,9 @@ function handleScrollEvent(eventType) {
   if (syncedLines.length !== 0) return;
 
   if (eventType === SCROLL_BOTTOM_EVENT) {
-    plainOffset += 3;
+    plainOffset = Math.min(plainOffset + 3, Math.max(0, plainLines.length - 3));
   } else if (eventType === SCROLL_TOP_EVENT) {
-    plainOffset -= 3;
+    plainOffset = Math.max(0, plainOffset - 3);
   }
 
   updatePlainLyricsDisplay();
@@ -247,7 +266,9 @@ function handleScrollEvent(eventType) {
 
 function handleEvent(event) {
   if (event.audioEvent && isCapturing) {
-    audioChunks.push(new Uint8Array(event.audioEvent.audioPcm));
+    const pcm = event.audioEvent.audioPcm;
+    if (pcm) audioChunks.push(new Uint8Array(pcm));
+    return;
   }
 
   if (event.listEvent) {
