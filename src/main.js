@@ -520,11 +520,16 @@ function goTo(screen, ...args) {
 // ── Event handling ───────────────────────────────────────────────────────────
 
 function isClick(et) {
-  return et === CLICK_EVENT || et === 'CLICK_EVENT';
+  // SDK quirk: CLICK_EVENT(0) can arrive as 0 or undefined on text/list events
+  return et === CLICK_EVENT || et === undefined;
 }
 
 function isDoubleClick(et) {
-  return et === DOUBLE_CLICK_EVENT || et === 'DOUBLE_CLICK_EVENT';
+  return et === DOUBLE_CLICK_EVENT;
+}
+
+function isScroll(et) {
+  return et === SCROLL_TOP_EVENT || et === SCROLL_BOTTOM_EVENT;
 }
 
 function handleTapEvent(eventType) {
@@ -564,30 +569,46 @@ function handleTapEvent(eventType) {
 function handleListEvent(event) {
   const listEvent = event.listEvent;
   const et = listEvent.eventType;
+  console.log('handleListEvent:', JSON.stringify({ et, name: listEvent.currentSelectItemName, idx: listEvent.currentSelectItemIndex }));
 
-  // Double-tap on list → route to tap handler
-  if (et === DOUBLE_CLICK_EVENT || et === 'DOUBLE_CLICK_EVENT') {
+  // Explicit double-tap → route to tap handler
+  if (et === DOUBLE_CLICK_EVENT) {
     handleTapEvent(DOUBLE_CLICK_EVENT);
     return;
   }
 
-  // If there's a selected item name, treat as selection regardless of eventType
-  // (real hardware may not set eventType consistently)
-  const name = listEvent.currentSelectItemName || listEvent.name;
-  if (!name) return; // scroll or unknown event — ignore
+  // Scroll events → ignore
+  if (et === SCROLL_TOP_EVENT || et === SCROLL_BOTTOM_EVENT) return;
+
+  // SDK quirk: list selection may have eventType=0 OR eventType=undefined
+  // Both mean "tap/select". Get the item name from available fields.
+  const name = listEvent.currentSelectItemName;
+  const idx = listEvent.currentSelectItemIndex;
+
+  // If no name and no index, can't determine selection
+  if (!name && idx === undefined) return;
+
+  // Resolve selection: use name if available, fall back to index
+  const modeItems = ['One Shot', 'Always On'];
+  const quitItems = ['No', 'Yes'];
 
   switch (currentScreen) {
-    case 'mode_select':
-      continuous = (name === 'Always On');
+    case 'mode_select': {
+      const selected = name || modeItems[idx] || '';
+      console.log('Mode selected:', selected);
+      continuous = (selected === 'Always On');
       goTo('listening');
       break;
-    case 'quit_confirm':
-      if (name === 'Yes') {
+    }
+    case 'quit_confirm': {
+      const selected = name || quitItems[idx] || 'No';
+      if (selected === 'Yes') {
         goTo('mode_select');
       } else {
         goTo('result');
       }
       break;
+    }
   }
 }
 
@@ -605,6 +626,13 @@ function handleScrollEvent(eventType) {
 }
 
 function handleEvent(event) {
+  // Debug: log all events to console
+  const debugKeys = Object.keys(event).filter(k => event[k] != null && k !== 'jsonData');
+  console.log('EVENT:', debugKeys.join(','), JSON.stringify(event, (k, v) => {
+    if (v instanceof Uint8Array) return `[Uint8Array(${v.length})]`;
+    return v;
+  }).slice(0, 500));
+
   if (event.audioEvent && isCapturing) {
     const pcm = event.audioEvent.audioPcm;
     if (pcm) audioChunks.push(new Uint8Array(pcm));
@@ -618,8 +646,7 @@ function handleEvent(event) {
 
   if (event.textEvent) {
     const et = event.textEvent.eventType;
-    if (et === SCROLL_TOP_EVENT || et === SCROLL_BOTTOM_EVENT ||
-        et === 'SCROLL_TOP_EVENT' || et === 'SCROLL_BOTTOM_EVENT') {
+    if (isScroll(et)) {
       handleScrollEvent(et);
     } else {
       handleTapEvent(et);
