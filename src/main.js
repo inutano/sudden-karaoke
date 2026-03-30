@@ -256,7 +256,7 @@ async function processCapture() {
   const pcm = collectPcm();
   console.log(`PCM collected: ${pcm.length} bytes`);
 
-  if (pcm.length < 32000) {
+  if (pcm.length < 2000) {
     goTo('error', "Couldn't hear anything.\nTap to retry.");
     return;
   }
@@ -443,7 +443,7 @@ function scheduleResync() {
       if (currentScreen !== 'result') return;
 
       const pcm = collectPcm();
-      if (pcm.length < 32000) { scheduleResync(); return; }
+      if (pcm.length < 2000) { scheduleResync(); return; }
 
       try {
         const song = await recognizeSong(pcm);
