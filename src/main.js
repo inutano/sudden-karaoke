@@ -196,11 +196,11 @@ function parseTimecode(tc) {
 async function recognizeSong(pcmBuffer) {
   const apiKey = await bridge.getLocalStorage('audd_api_key');
   const wavBuffer = pcmToWav(pcmBuffer);
-  const base64Audio = arrayBufferToBase64(wavBuffer);
+  const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
 
   const formData = new FormData();
   formData.append('api_token', apiKey);
-  formData.append('audio', base64Audio);
+  formData.append('file', wavBlob, 'audio.wav');
   formData.append('return', 'timecode');
 
   const res = await fetch('https://api.audd.io/', { method: 'POST', body: formData });
