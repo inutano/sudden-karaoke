@@ -227,11 +227,12 @@ async function recognizeSong(pcmBuffer) {
 async function startCapture(durationMs) {
   audioChunks = [];
   isCapturing = true;
-  const micOk = await bridge.audioControl(true);
-  if (!micOk) {
-    isCapturing = false;
-    goTo('error', 'Mic unavailable.\nCheck permissions.');
-    return;
+  try {
+    const micOk = await bridge.audioControl(true);
+    // Some simulators/SDK versions return false or undefined — proceed anyway
+    console.log('audioControl result:', micOk);
+  } catch (err) {
+    console.warn('audioControl error:', err);
   }
   console.log(`Mic started, capturing ${durationMs}ms`);
 
@@ -585,8 +586,8 @@ function handleListEvent(event) {
   const name = listEvent.currentSelectItemName;
   const idx = listEvent.currentSelectItemIndex;
 
-  // If no name and no index, can't determine selection
-  if (!name && idx === undefined) return;
+  // If no name and no index, default to first item (index 0)
+  // Simulator and some SDK versions don't include selection details on click
 
   // Resolve selection: use name if available, fall back to index
   const modeItems = ['One Shot', 'Always On'];
@@ -594,14 +595,14 @@ function handleListEvent(event) {
 
   switch (currentScreen) {
     case 'mode_select': {
-      const selected = name || modeItems[idx] || '';
+      const selected = name || modeItems[idx ?? 0] || 'One Shot';
       console.log('Mode selected:', selected);
       continuous = (selected === 'Always On');
       goTo('listening');
       break;
     }
     case 'quit_confirm': {
-      const selected = name || quitItems[idx] || 'No';
+      const selected = name || quitItems[idx ?? 0] || 'No';
       if (selected === 'Yes') {
         goTo('mode_select');
       } else {
