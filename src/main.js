@@ -519,8 +519,17 @@ function goTo(screen, ...args) {
 
 // ── Event handling ───────────────────────────────────────────────────────────
 
+function isClick(et) {
+  return et === CLICK_EVENT || et === 'CLICK_EVENT';
+}
+
+function isDoubleClick(et) {
+  return et === DOUBLE_CLICK_EVENT || et === 'DOUBLE_CLICK_EVENT';
+}
+
 function handleTapEvent(eventType) {
-  if (eventType === CLICK_EVENT) {
+  console.log('handleTapEvent:', eventType, 'screen:', currentScreen);
+  if (isClick(eventType)) {
     switch (currentScreen) {
       case 'error':
         goTo('listening');
@@ -529,7 +538,7 @@ function handleTapEvent(eventType) {
         goTo('quit_confirm');
         break;
     }
-  } else if (eventType === DOUBLE_CLICK_EVENT) {
+  } else if (isDoubleClick(eventType)) {
     switch (currentScreen) {
       case 'no_api_key':
       case 'mode_select':
@@ -554,18 +563,18 @@ function handleTapEvent(eventType) {
 
 function handleListEvent(event) {
   const listEvent = event.listEvent;
+  const et = listEvent.eventType;
 
-  if (listEvent.eventType === DOUBLE_CLICK_EVENT) {
+  // Double-tap on list → route to tap handler
+  if (et === DOUBLE_CLICK_EVENT || et === 'DOUBLE_CLICK_EVENT') {
     handleTapEvent(DOUBLE_CLICK_EVENT);
     return;
   }
 
-  if (listEvent.eventType !== CLICK_EVENT) {
-    // Ignore scroll and other event types
-    return;
-  }
-
-  const name = listEvent.currentSelectItemName;
+  // If there's a selected item name, treat as selection regardless of eventType
+  // (real hardware may not set eventType consistently)
+  const name = listEvent.currentSelectItemName || listEvent.name;
+  if (!name) return; // scroll or unknown event — ignore
 
   switch (currentScreen) {
     case 'mode_select':
@@ -609,7 +618,8 @@ function handleEvent(event) {
 
   if (event.textEvent) {
     const et = event.textEvent.eventType;
-    if (et === SCROLL_TOP_EVENT || et === SCROLL_BOTTOM_EVENT) {
+    if (et === SCROLL_TOP_EVENT || et === SCROLL_BOTTOM_EVENT ||
+        et === 'SCROLL_TOP_EVENT' || et === 'SCROLL_BOTTOM_EVENT') {
       handleScrollEvent(et);
     } else {
       handleTapEvent(et);
