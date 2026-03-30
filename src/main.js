@@ -626,6 +626,7 @@ function handleEvent(event) {
 
 async function main() {
   bridge = await waitForEvenAppBridge();
+  window.__suddenKaraokeBridge = bridge; // expose to phone UI script
   const user = await bridge.getUserInfo();
   console.log('Sudden Karaoke — User:', user.name);
 

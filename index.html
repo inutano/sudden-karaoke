@@ -410,8 +410,11 @@
 
   </div>
 
+  <!-- All app logic (glasses + phone setup) -->
+  <script type="module" src="/src/main.js"></script>
+
+  <!-- Phone-side setup UI logic (no bridge init — main.js handles that) -->
   <script type="module">
-    import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk';
 
     // ── Starfield generation ──────────────────────────────────────────────────
     (function buildStarfield() {
@@ -470,23 +473,27 @@
       showScreen('setup');
     });
 
-    // ── Bridge init ───────────────────────────────────────────────────────────
-    let bridge = null;
+    // ── Bridge access (shared via window from main.js) ─────────────────────
+    function getBridge() { return window.__suddenKaraokeBridge || null; }
 
-    async function init() {
-      try {
-        bridge = await waitForEvenAppBridge();
-
-        // If a key is already stored, skip straight to Ready
-        const storedKey = await bridge.getLocalStorage('audd_api_key');
-        if (storedKey) {
-          showScreen('ready');
-        }
-        // Otherwise stay on Welcome (already active)
-      } catch (err) {
-        // Bridge unavailable (e.g. browser preview) — stay on Welcome
-        console.warn('EvenAppBridge not available:', err);
+    // Check if key already stored once bridge is ready
+    function waitForBridge() {
+      if (getBridge()) {
+        checkExistingKey();
+        return;
       }
+      // Poll briefly — main.js sets window.__suddenKaraokeBridge on init
+      const check = setInterval(() => {
+        if (getBridge()) { clearInterval(check); checkExistingKey(); }
+      }, 200);
+      setTimeout(() => clearInterval(check), 5000); // give up after 5s
+    }
+
+    async function checkExistingKey() {
+      try {
+        const storedKey = await getBridge().getLocalStorage('audd_api_key');
+        if (storedKey) showScreen('ready');
+      } catch (e) { /* no key yet */ }
     }
 
     // ── Save handler ──────────────────────────────────────────────────────────
@@ -501,9 +508,8 @@
       hideError();
 
       try {
-        if (bridge) {
-          await bridge.setLocalStorage('audd_api_key', key);
-        }
+        const br = getBridge();
+        if (br) await br.setLocalStorage('audd_api_key', key);
         showScreen('ready');
       } catch (err) {
         showError('Failed to save. Please try again.');
@@ -515,7 +521,7 @@
     apiKeyInput.addEventListener('input', hideError);
 
     // ── Kick off ──────────────────────────────────────────────────────────────
-    init();
+    waitForBridge();
   </script>
 
 </body>
