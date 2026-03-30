@@ -11,7 +11,9 @@
   "permissions": {
     "network": [
       "api.audd.io",
-      "lrclib.net"
+      "lrclib.net",
+      "fonts.googleapis.com",
+      "fonts.gstatic.com"
     ],
     "fs": []
   }
