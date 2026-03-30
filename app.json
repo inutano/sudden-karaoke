@@ -7,14 +7,5 @@
   "tagline": "Hear a song? Sing along!",
   "description": "Identifies songs playing around you and displays karaoke lyrics on your G2 glasses. Tap to identify, or turn on Always On mode for continuous recognition.",
   "author": "inutano",
-  "entrypoint": "index.html",
-  "permissions": {
-    "network": [
-      "api.audd.io",
-      "lrclib.net",
-      "fonts.googleapis.com",
-      "fonts.gstatic.com"
-    ],
-    "fs": []
-  }
+  "entrypoint": "index.html"
 }

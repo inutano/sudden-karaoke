@@ -624,8 +624,22 @@ function handleEvent(event) {
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
+async function initBridge(timeoutMs = 4000) {
+  return Promise.race([
+    waitForEvenAppBridge(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Bridge timeout')), timeoutMs)
+    ),
+  ]);
+}
+
 async function main() {
-  bridge = await waitForEvenAppBridge();
+  try {
+    bridge = await initBridge();
+  } catch (err) {
+    console.warn('Bridge not available:', err.message, '— phone-only mode');
+    return; // phone UI handles itself, no glasses to drive
+  }
   window.__suddenKaraokeBridge = bridge; // expose to phone UI script
   const user = await bridge.getUserInfo();
   console.log('Sudden Karaoke — User:', user.name);
